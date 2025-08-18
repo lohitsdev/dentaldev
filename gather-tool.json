@@ -1,0 +1,41 @@
+{
+  "tools": [
+    {
+      "type": "gather_using_ai",
+      "name": "GatherUsingAI",
+      "description": "Collect patient info: name, phone, symptoms, pain & urgency",
+      "parameters": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Patient full name"
+            },
+            "phone": {
+              "type": "string",
+              "pattern": "^\\+?[0-9]{7,15}$",
+              "description": "Phone number"
+            },
+            "symptoms": {
+              "type": "string",
+              "description": "Reason for calling"
+            },
+            "pain_level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Pain level 1–10"
+            },
+            "urgency_level": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "emergency"],
+              "description": "Urgency level"
+            }
+          },
+          "required": ["name", "symptoms"]
+        }
+      }
+    }
+  ]
+} 
