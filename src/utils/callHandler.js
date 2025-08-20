@@ -126,11 +126,11 @@ async function handleEmergencyStatus(event) {
         const patientPhone = webhookPatientInfo.phone || storedData?.phone || 'Unknown Phone';
         const reason = event.data.payload.reason || webhookPatientInfo.reason || storedData?.symptoms || 'Not specified';
         
-        // Format phone number for display (remove +1 prefix if present for cleaner display)
-        const displayPhone = patientPhone.replace(/^\+1/, '');
+        // Format phone number for display (keep + prefix for US numbers)
+        const displayPhone = patientPhone.startsWith('+') ? patientPhone : `+${patientPhone}`;
         
         // Create the SMS message in the requested format
-        const message = `${patientName} (${displayPhone}) requesting to speak to doctor due to ${reason}.`;
+        const message = `EMERGENCY: ${patientName} (${displayPhone}) requesting to speak to doctor due to ${reason}.`;
         
         console.log(`[SMS] Emergency details - Name: ${patientName}, Phone: ${patientPhone}, Reason: ${reason}`);
         
