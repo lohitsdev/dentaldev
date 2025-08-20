@@ -119,9 +119,17 @@ async function handleEmergencyStatus(event) {
       if (doctorPhone) {
         console.log(`[SMS] Sending emergency SMS to ${doctorPhone}`);
         const telnyxClient = require('../telnyx');
-        const message = storedData 
-          ? `EMERGENCY: Patient ${storedData.name} (${storedData.phone}) needs immediate dental attention. Reason: ${storedData.symptoms}`
-          : 'EMERGENCY: A patient needs immediate dental attention. AI Assistant is gathering details and will transfer the call once assessment is complete.';
+        
+        // Use patient info from webhook payload or stored data
+        const webhookPatientInfo = event.data.payload.patientInfo || {};
+        const patientName = webhookPatientInfo.name || storedData?.name || 'Unknown Patient';
+        const patientPhone = webhookPatientInfo.phone || storedData?.phone || 'Unknown Phone';
+        const reason = event.data.payload.reason || webhookPatientInfo.reason || storedData?.symptoms || 'Not specified';
+        
+        const message = `EMERGENCY: Patient ${patientName} (${patientPhone}) needs immediate dental attention. Reason: ${reason}`;
+        
+        console.log(`[SMS] Emergency details - Name: ${patientName}, Phone: ${patientPhone}, Reason: ${reason}`);
+        
         await telnyxClient.sendSMS(doctorPhone, message);
         console.log('[SMS SENT] Emergency notification sent to', doctorPhone);
         console.log(`[EMERGENCY STATUS] ✅ Emergency SMS sent for request ${requestId}`);

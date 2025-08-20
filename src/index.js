@@ -678,10 +678,28 @@ app.post('/webhook/emergency', async (req, res) => {
     }
 
     const isEmergency = req.body.Emergency;
+    const reason = req.body.Reason || req.body['Reason '] || 'No reason provided'; // Handle both "Reason" and "Reason " (with space)
+    
+    // Extract patient info from reason if available
+    let patientInfo = {};
+    if (reason && reason !== 'No reason provided') {
+      // Try to extract name and phone from reason string like "Bob Smith (+17346744780) is requesting..."
+      const namePhoneMatch = reason.match(/^([^(]+)\s*\((\+\d+)\)/);
+      if (namePhoneMatch) {
+        patientInfo.name = namePhoneMatch[1].trim();
+        patientInfo.phone = namePhoneMatch[2];
+        patientInfo.reason = reason;
+      } else {
+        patientInfo.reason = reason;
+      }
+    }
     
     // Log validated data
     console.log(`\n📋 [${requestId}] Validated Data:`);
     console.log(`Emergency Status: ${isEmergency ? 'TRUE' : 'FALSE'}`);
+    console.log(`Reason: ${reason}`);
+    if (patientInfo.name) console.log(`Patient Name: ${patientInfo.name}`);
+    if (patientInfo.phone) console.log(`Patient Phone: ${patientInfo.phone}`);
 
     // Process through webhook event handler
     await processWebhookEvent({
@@ -690,6 +708,8 @@ app.post('/webhook/emergency', async (req, res) => {
         payload: {
           Emergency: req.body.Emergency,
           is_emergency: isEmergency,
+          reason: reason,
+          patientInfo: patientInfo,
           timestamp: new Date().toISOString(),
           request_id: requestId
         }
@@ -707,6 +727,8 @@ app.post('/webhook/emergency', async (req, res) => {
       message: 'Emergency status processed successfully',
       request_id: requestId,
       is_emergency: isEmergency,
+      reason: reason,
+      patient_info: patientInfo,
       processing_time_ms: processingTime,
       timestamp: new Date().toISOString()
     });
