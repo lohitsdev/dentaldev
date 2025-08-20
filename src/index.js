@@ -680,17 +680,32 @@ app.post('/webhook/emergency', async (req, res) => {
     const isEmergency = req.body.Emergency;
     const reason = req.body.Reason || req.body['Reason '] || 'No reason provided'; // Handle both "Reason" and "Reason " (with space)
     
-    // Extract patient info from reason if available
+    // Extract patient info from webhook payload
     let patientInfo = {};
-    if (reason && reason !== 'No reason provided') {
-      // Try to extract name and phone from reason string like "Bob Smith (+17346744780) is requesting..."
+    
+    // Check if we have direct Name and phone fields
+    if (req.body.Name) {
+      patientInfo.name = req.body.Name;
+    }
+    
+    // Handle phone number from telnyx_end_user_target or other phone fields
+    if (req.body.telnyx_end_user_target) {
+      // Convert to proper phone format if it's just digits
+      const phoneNumber = req.body.telnyx_end_user_target.toString();
+      patientInfo.phone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber}`;
+    } else if (req.body.phone) {
+      patientInfo.phone = req.body.phone;
+    }
+    
+    // Always include the reason
+    patientInfo.reason = reason;
+    
+    // Fallback: try to extract from reason string if no direct fields (for backward compatibility)
+    if (!patientInfo.name && !patientInfo.phone && reason && reason !== 'No reason provided') {
       const namePhoneMatch = reason.match(/^([^(]+)\s*\((\+\d+)\)/);
       if (namePhoneMatch) {
         patientInfo.name = namePhoneMatch[1].trim();
         patientInfo.phone = namePhoneMatch[2];
-        patientInfo.reason = reason;
-      } else {
-        patientInfo.reason = reason;
       }
     }
     
