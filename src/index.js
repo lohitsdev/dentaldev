@@ -690,9 +690,8 @@ app.post('/webhook/emergency', async (req, res) => {
     
     // Handle phone number from telnyx_end_user_target or other phone fields
     if (req.body.telnyx_end_user_target) {
-      // Convert to proper phone format if it's just digits
-      const phoneNumber = req.body.telnyx_end_user_target.toString();
-      patientInfo.phone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber}`;
+      // Use phone number exactly as received from webhook
+      patientInfo.phone = req.body.telnyx_end_user_target.toString();
     } else if (req.body.phone) {
       patientInfo.phone = req.body.phone;
     }

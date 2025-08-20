@@ -126,8 +126,8 @@ async function handleEmergencyStatus(event) {
         const patientPhone = webhookPatientInfo.phone || storedData?.phone || 'Unknown Phone';
         const reason = event.data.payload.reason || webhookPatientInfo.reason || storedData?.symptoms || 'Not specified';
         
-        // Format phone number for display (keep + prefix for US numbers)
-        const displayPhone = patientPhone.startsWith('+') ? patientPhone : `+${patientPhone}`;
+        // Use phone number exactly as received from webhook
+        const displayPhone = patientPhone;
         
         // Create the SMS message in the requested format
         const message = `EMERGENCY: ${patientName} (${displayPhone}) requesting to speak to doctor due to ${reason}.`;
