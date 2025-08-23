@@ -225,18 +225,25 @@ function getCurrentActiveDoctor() {
   }
 }
 
-// Helper function to determine emergency status based on pain level
+// Helper function to determine urgency status based on pain level
 function determineEmergencyStatus(painLevel) {
   // Handle null, undefined, or non-numeric values
   if (painLevel === null || painLevel === undefined || isNaN(painLevel)) {
-    return 'Non-Emergency';  // Default to non-emergency if no pain level
+    return 'Non-Urgency';  // Default to non-urgency if no pain level
   }
   
   // Convert to number if it's a string
   const numericPainLevel = Number(painLevel);
   
-  // Emergency if pain level is 7 or higher
-  return numericPainLevel >= 7 ? 'Emergency' : 'Non-Emergency';
+  // Urgency if pain level is 10, Non-Urgency if pain level is 0
+  if (numericPainLevel === 10) {
+    return 'Urgency';
+  } else if (numericPainLevel === 0) {
+    return 'Non-Urgency';
+  } else {
+    // For other pain levels, determine based on threshold (7 or higher = Urgency)
+    return numericPainLevel >= 7 ? 'Urgency' : 'Non-Urgency';
+  }
 }
 
 // Email configuration test endpoint
@@ -338,11 +345,14 @@ app.post('/webhook/ai-assistant', async (req, res) => {
     console.log('🔍 Debug - storageKey:', storageKey);
     
     if (storageKey) {
+      // Handle both "Pain level" (from webhook) and "pain_level" (legacy)
+      const painLevel = req.body['Pain level'] || req.body.pain_level || null;
+      
       const callData = {
         name: req.body.name || 'Unknown',
         phone: req.body.phone || 'Unknown',
-        pain_level: req.body.pain_level || 0,
-        status: determineEmergencyStatus(req.body.pain_level)
+        pain_level: painLevel,
+        status: determineEmergencyStatus(painLevel)
       };
       
       try {

@@ -182,8 +182,8 @@ async function sendReceptionistSummary(callSummary, practiceSettings) {
       summary: callSummary.summary || 'No summary available'
     };
 
-    // Determine status color (red for Emergency, green for Non-Emergency)
-    const statusColor = safeData.status === 'Emergency' ? '#d32f2f' : '#2e7d32';
+    // Determine status color (red for Urgency, green for Non-Urgency)
+    const statusColor = safeData.status === 'Urgency' ? '#d32f2f' : '#2e7d32';
 
     const emailData = {
       to: practiceSettings.adminEmail || process.env.ADMIN_EMAIL || 'dentalreception6@gmail.com',

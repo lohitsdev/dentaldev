@@ -17,7 +17,9 @@ async function handleWebhook(webhookData) {
 }
 
 async function handleInitialWebhook(webhookData) {
-  const { call_control_id, name, phone, pain_level } = webhookData;
+  const { call_control_id, name, phone } = webhookData;
+  // Handle both "Pain level" (from webhook) and "pain_level" (legacy)
+  const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
   
   if (!call_control_id) {
     console.log('No call_control_id found, skipping storage');
@@ -67,11 +69,14 @@ async function handleConversationInsight(webhookData) {
 }
 
 function extractPatientInfo(webhookData) {
-  const { name, phone, pain_level, call_control_id } = webhookData;
+  const { name, phone, call_control_id } = webhookData;
+  // Handle both "Pain level" (from webhook) and "pain_level" (legacy)
+  const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
+  
   return {
     name: name || 'Unknown',
     phone: phone || 'Unknown',
-    pain_level: pain_level || null,
+    pain_level: pain_level,
     call_control_id: call_control_id,
     symptoms: 'Not specified',
     timeCalled: new Date().toLocaleTimeString(),
@@ -97,21 +102,23 @@ function extractSymptomsFromSummary(summary) {
 
 function determineEmergencyStatus(painLevel) {
   if (painLevel === null || painLevel === undefined) {
-    return 'Non-Emergency';
+    return 'Non-Urgency';
   }
   
   const numericPainLevel = Number(painLevel);
   
   if (isNaN(numericPainLevel)) {
-    return 'Non-Emergency';
+    return 'Non-Urgency';
   }
   
-  if (numericPainLevel >= 7 && numericPainLevel <= 10) {
-    return 'Emergency';
-  } else if (numericPainLevel >= 0 && numericPainLevel <= 6) {
-    return 'Non-Emergency';
+  // Urgency if pain level is 10, Non-Urgency if pain level is 0
+  if (numericPainLevel === 10) {
+    return 'Urgency';
+  } else if (numericPainLevel === 0) {
+    return 'Non-Urgency';
   } else {
-    return 'Non-Emergency';
+    // For other pain levels, determine based on threshold (7 or higher = Urgency)
+    return numericPainLevel >= 7 ? 'Urgency' : 'Non-Urgency';
   }
 }
 
