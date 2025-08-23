@@ -229,20 +229,20 @@ function getCurrentActiveDoctor() {
 function determineEmergencyStatus(painLevel) {
   // Handle null, undefined, or non-numeric values
   if (painLevel === null || painLevel === undefined || isNaN(painLevel)) {
-    return 'Non-Urgency';  // Default to non-urgency if no pain level
+    return 'Non-Urgent';  // Default to non-urgent if no pain level
   }
   
   // Convert to number if it's a string
   const numericPainLevel = Number(painLevel);
   
-  // Urgency if pain level is 10, Non-Urgency if pain level is 0
+  // Urgent if pain level is 10, Non-Urgent if pain level is 0
   if (numericPainLevel === 10) {
-    return 'Urgency';
+    return 'Urgent';
   } else if (numericPainLevel === 0) {
-    return 'Non-Urgency';
+    return 'Non-Urgent';
   } else {
-    // For other pain levels, determine based on threshold (7 or higher = Urgency)
-    return numericPainLevel >= 7 ? 'Urgency' : 'Non-Urgency';
+    // For other pain levels, determine based on threshold (7 or higher = Urgent)
+    return numericPainLevel >= 7 ? 'Urgent' : 'Non-Urgent';
   }
 }
 

@@ -102,23 +102,23 @@ function extractSymptomsFromSummary(summary) {
 
 function determineEmergencyStatus(painLevel) {
   if (painLevel === null || painLevel === undefined) {
-    return 'Non-Urgency';
+    return 'Non-Urgent';
   }
   
   const numericPainLevel = Number(painLevel);
   
   if (isNaN(numericPainLevel)) {
-    return 'Non-Urgency';
+    return 'Non-Urgent';
   }
   
-  // Urgency if pain level is 10, Non-Urgency if pain level is 0
+  // Urgent if pain level is 10, Non-Urgent if pain level is 0
   if (numericPainLevel === 10) {
-    return 'Urgency';
+    return 'Urgent';
   } else if (numericPainLevel === 0) {
-    return 'Non-Urgency';
+    return 'Non-Urgent';
   } else {
-    // For other pain levels, determine based on threshold (7 or higher = Urgency)
-    return numericPainLevel >= 7 ? 'Urgency' : 'Non-Urgency';
+    // For other pain levels, determine based on threshold (7 or higher = Urgent)
+    return numericPainLevel >= 7 ? 'Urgent' : 'Non-Urgent';
   }
 }
 

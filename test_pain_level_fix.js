@@ -39,3 +39,4 @@ testCases.forEach((testCase, index) => {
   console.log(`  ✅ ${status === (painLevel >= 7 ? 'Emergency' : 'Non-Emergency') ? 'PASS' : 'FAIL'}\n`);
 });
 
+

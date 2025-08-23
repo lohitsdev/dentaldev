@@ -65,7 +65,7 @@ async function handleAssistantEvent(event) {
         hour12: true
       }),
       status: event.data.payload.Emergency !== undefined ? 
-        (event.data.payload.Emergency === true ? 'Urgency' : 'Non-Urgency') : 
+        (event.data.payload.Emergency === true ? 'Urgent' : 'Non-Urgent') : 
         'Unknown',
       timestamp: new Date()
     };
@@ -193,7 +193,7 @@ async function handleGatherUsingAI(event) {
 
     return {
       status: 'processed',
-      isEmergency: isEmergency === null ? 'Unknown' : (isEmergency ? 'Urgency' : 'Non-Urgency'),
+      isEmergency: isEmergency === null ? 'Unknown' : (isEmergency ? 'Urgent' : 'Non-Urgent'),
       conversationalId
     };
   } catch (error) {
