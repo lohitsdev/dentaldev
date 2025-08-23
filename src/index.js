@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { processWebhookEvent } = require('./utils/callHandler');
 const { handleWebhook } = require('./utils/webhookHandler');
+const { sendErrorNotification, sendWebhookFailureNotification, sendUnhandledEndpointNotification } = require('./utils/errorMonitoring');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -770,6 +771,22 @@ app.post('/webhook/emergency', async (req, res) => {
     console.error('Query:', req.query);
     console.error('Body:', req.body);
     
+    // Send detailed error notification
+    try {
+      await sendWebhookFailureNotification('emergency', req.body, error, {
+        body: req.body,
+        headers: req.headers,
+        query: req.query,
+        method: req.method,
+        url: req.url,
+        ip: req.ip,
+        requestId: requestId,
+        processingTime: processingTime
+      });
+    } catch (emailError) {
+      console.error('Failed to send emergency webhook error notification:', emailError);
+    }
+    
     // Return 400 for validation errors, 200 for other errors to acknowledge receipt
     const statusCode = error.message.includes('Invalid request') ? 400 : 200;
     
@@ -842,6 +859,38 @@ app.post('/webhook/emergency-gather', async (req, res) => {
       error: error.message,
       processing_time_ms: processingTime,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Test error notification endpoint (for testing purposes)
+app.post('/test/error-notification', async (req, res) => {
+  try {
+    const testError = new Error('Test error notification - this is a test message');
+    testError.stack = `Error: Test error notification
+    at /test/error-notification (test-endpoint:1:1)
+    at testFunction (test-file.js:10:5)
+    at Object.testMethod (test-module.js:25:10)`;
+    
+    await sendErrorNotification(testError, {
+      body: req.body || { test: 'data', message: 'This is a test error notification' },
+      headers: req.headers,
+      query: req.query,
+      method: req.method,
+      url: req.url,
+      ip: req.ip
+    }, '/test/error-notification');
+    
+    res.status(200).json({
+      message: 'Test error notification sent successfully',
+      timestamp: new Date().toISOString(),
+      note: 'Check dentalreception6@gmail.com for the error notification email'
+    });
+  } catch (error) {
+    console.error('Failed to send test error notification:', error);
+    res.status(500).json({
+      error: 'Failed to send test notification',
+      message: error.message
     });
   }
 });
@@ -1270,4 +1319,73 @@ app.listen(port, () => {
   console.log('- POST /webhook (generic)');
   
   console.log(`\n⚡ Ready to receive webhooks...\n`);
+});
+
+// Global error handling middleware (must be after all routes)
+app.use(async (err, req, res, next) => {
+  const errorId = `error_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  
+  console.error(`🚨 [${errorId}] Unhandled error:`, err);
+  
+  // Send error notification email
+  try {
+    await sendErrorNotification(err, {
+      body: req.body,
+      headers: req.headers,
+      query: req.query,
+      method: req.method,
+      url: req.url,
+      ip: req.ip
+    }, req.path);
+  } catch (emailError) {
+    console.error('Failed to send error notification:', emailError);
+  }
+  
+  // Send response to client
+  res.status(500).json({
+    error: 'Internal server error',
+    error_id: errorId,
+    message: 'An error occurred processing your request. The development team has been notified.',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404 handler for unhandled endpoints
+app.use(async (req, res) => {
+  const requestId = `404_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  
+  console.warn(`🔍 [${requestId}] Unhandled endpoint: ${req.method} ${req.url}`);
+  
+  // Send notification for unhandled endpoints
+  try {
+    await sendUnhandledEndpointNotification({
+      body: req.body,
+      headers: req.headers,
+      query: req.query,
+      method: req.method,
+      url: req.url,
+      ip: req.ip
+    });
+  } catch (emailError) {
+    console.error('Failed to send unhandled endpoint notification:', emailError);
+  }
+  
+  res.status(404).json({
+    error: 'Endpoint not found',
+    request_id: requestId,
+    method: req.method,
+    url: req.url,
+    message: 'The requested endpoint was not found. The development team has been notified.',
+    timestamp: new Date().toISOString(),
+    available_endpoints: [
+      'POST /webhook/emergency',
+      'POST /webhook/sms', 
+      'POST /webhook/call',
+      'POST /webhook/ai-assistant',
+      'POST /webhook/emergency-recording',
+      'POST /webhook/emergency-gather',
+      'GET /health',
+      'GET /api/la-time'
+    ]
+  });
 });
