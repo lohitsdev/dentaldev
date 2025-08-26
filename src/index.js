@@ -245,26 +245,7 @@ function getCurrentActiveDoctor() {
   }
 }
 
-// Helper function to determine urgency status based on pain level
-function determineEmergencyStatus(painLevel) {
-  // Handle null, undefined, or non-numeric values
-  if (painLevel === null || painLevel === undefined || isNaN(painLevel)) {
-    return 'Non-Urgent';  // Default to non-urgent if no pain level
-  }
-  
-  // Convert to number if it's a string
-  const numericPainLevel = Number(painLevel);
-  
-  // Urgent if pain level is 10, Non-Urgent if pain level is 0
-  if (numericPainLevel === 10) {
-    return 'Urgent';
-  } else if (numericPainLevel === 0) {
-    return 'Non-Urgent';
-  } else {
-    // For other pain levels, determine based on threshold (7 or higher = Urgent)
-    return numericPainLevel >= 7 ? 'Urgent' : 'Non-Urgent';
-  }
-}
+
 
 // Email configuration test endpoint
 app.get('/test/email-config', (req, res) => {
@@ -365,23 +346,14 @@ app.post('/webhook/ai-assistant', async (req, res) => {
     console.log('🔍 Debug - storageKey:', storageKey);
     
     if (storageKey) {
-      // Handle new is_urgent format and legacy pain level formats
-      let status = 'Non-Urgent'; // default
-      
-      if (req.body.is_urgent !== undefined) {
-        // New format: is_urgent boolean
-        status = req.body.is_urgent === true ? 'Urgent' : 'Non-Urgent';
-      } else {
-        // Legacy format: pain level based
-        const painLevel = req.body['Pain level'] || req.body.pain_level || null;
-        status = determineEmergencyStatus(painLevel);
-      }
+      // Use is_urgent boolean to determine status
+      const isUrgent = req.body.is_urgent === true;
+      const status = isUrgent ? 'Urgent' : 'Non-Urgent';
       
       const callData = {
         name: req.body.Name || req.body.name || 'Unknown',
         phone: req.body.phone ? req.body.phone.toString() : 'Unknown',
-        pain_level: req.body['Pain level'] || req.body.pain_level || null,
-        is_urgent: req.body.is_urgent,
+        is_urgent: req.body.is_urgent || false,
         status: status
       };
       

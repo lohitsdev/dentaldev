@@ -25,24 +25,15 @@ async function handleInitialWebhook(webhookData) {
     return;
   }
 
-  // Handle new is_urgent format and legacy pain level formats
-  let status = 'Non-Urgent'; // default
-  
-  if (webhookData.is_urgent !== undefined) {
-    // New format: is_urgent boolean
-    status = webhookData.is_urgent === true ? 'Urgent' : 'Non-Urgent';
-  } else {
-    // Legacy format: pain level based
-    const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
-    status = determineEmergencyStatus(pain_level);
-  }
+  // Use is_urgent boolean to determine status
+  const isUrgent = webhookData.is_urgent === true;
+  const status = isUrgent ? 'Urgent' : 'Non-Urgent';
 
   const patientInfo = {
     call_control_id,
     name: name || 'Unknown',
     phone: phone ? phone.toString() : 'Unknown',
-    pain_level: webhookData['Pain level'] || webhookData.pain_level || null,
-    is_urgent: webhookData.is_urgent,
+    is_urgent: webhookData.is_urgent || false,
     status: status,
     timeCalled: new Date().toLocaleTimeString(),
     timestamp: new Date().toISOString()
@@ -82,23 +73,14 @@ function extractPatientInfo(webhookData) {
   const { phone, call_control_id } = webhookData;
   const name = webhookData.Name || webhookData.name;
   
-  // Handle new is_urgent format and legacy pain level formats
-  let status = 'Non-Urgent'; // default
-  
-  if (webhookData.is_urgent !== undefined) {
-    // New format: is_urgent boolean
-    status = webhookData.is_urgent === true ? 'Urgent' : 'Non-Urgent';
-  } else {
-    // Legacy format: pain level based
-    const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
-    status = determineEmergencyStatus(pain_level);
-  }
+  // Use is_urgent boolean to determine status
+  const isUrgent = webhookData.is_urgent === true;
+  const status = isUrgent ? 'Urgent' : 'Non-Urgent';
   
   return {
     name: name || 'Unknown',
     phone: phone ? phone.toString() : 'Unknown',
-    pain_level: webhookData['Pain level'] || webhookData.pain_level || null,
-    is_urgent: webhookData.is_urgent,
+    is_urgent: webhookData.is_urgent || false,
     call_control_id: call_control_id,
     status: status,
     symptoms: 'Not specified',
@@ -123,27 +105,7 @@ function extractSymptomsFromSummary(summary) {
   return symptomsMatch ? symptomsMatch[1] : 'Not specified';
 }
 
-function determineEmergencyStatus(painLevel) {
-  if (painLevel === null || painLevel === undefined) {
-    return 'Non-Urgent';
-  }
-  
-  const numericPainLevel = Number(painLevel);
-  
-  if (isNaN(numericPainLevel)) {
-    return 'Non-Urgent';
-  }
-  
-  // Urgent if pain level is 10, Non-Urgent if pain level is 0
-  if (numericPainLevel === 10) {
-    return 'Urgent';
-  } else if (numericPainLevel === 0) {
-    return 'Non-Urgent';
-  } else {
-    // For other pain levels, determine based on threshold (7 or higher = Urgent)
-    return numericPainLevel >= 7 ? 'Urgent' : 'Non-Urgent';
-  }
-}
+
 
 async function sendEmailNotification(patientInfo) {
   try {
