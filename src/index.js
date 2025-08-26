@@ -346,14 +346,24 @@ app.post('/webhook/ai-assistant', async (req, res) => {
     console.log('🔍 Debug - storageKey:', storageKey);
     
     if (storageKey) {
-      // Handle both "Pain level" (from webhook) and "pain_level" (legacy)
-      const painLevel = req.body['Pain level'] || req.body.pain_level || null;
+      // Handle new is_urgent format and legacy pain level formats
+      let status = 'Non-Urgent'; // default
+      
+      if (req.body.is_urgent !== undefined) {
+        // New format: is_urgent boolean
+        status = req.body.is_urgent === true ? 'Urgent' : 'Non-Urgent';
+      } else {
+        // Legacy format: pain level based
+        const painLevel = req.body['Pain level'] || req.body.pain_level || null;
+        status = determineEmergencyStatus(painLevel);
+      }
       
       const callData = {
         name: req.body.name || 'Unknown',
-        phone: req.body.phone || 'Unknown',
-        pain_level: painLevel,
-        status: determineEmergencyStatus(painLevel)
+        phone: req.body.phone ? req.body.phone.toString() : 'Unknown',
+        pain_level: req.body['Pain level'] || req.body.pain_level || null,
+        is_urgent: req.body.is_urgent,
+        status: status
       };
       
       try {

@@ -18,21 +18,30 @@ async function handleWebhook(webhookData) {
 
 async function handleInitialWebhook(webhookData) {
   const { call_control_id, name, phone } = webhookData;
-  // Handle both "Pain level" (from webhook) and "pain_level" (legacy)
-  const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
   
   if (!call_control_id) {
     console.log('No call_control_id found, skipping storage');
     return;
   }
 
-  const status = determineEmergencyStatus(pain_level);
+  // Handle new is_urgent format and legacy pain level formats
+  let status = 'Non-Urgent'; // default
+  
+  if (webhookData.is_urgent !== undefined) {
+    // New format: is_urgent boolean
+    status = webhookData.is_urgent === true ? 'Urgent' : 'Non-Urgent';
+  } else {
+    // Legacy format: pain level based
+    const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
+    status = determineEmergencyStatus(pain_level);
+  }
 
   const patientInfo = {
     call_control_id,
     name: name || 'Unknown',
-    phone: phone || 'Unknown',
-    pain_level: pain_level || null,
+    phone: phone ? phone.toString() : 'Unknown',
+    pain_level: webhookData['Pain level'] || webhookData.pain_level || null,
+    is_urgent: webhookData.is_urgent,
     status: status,
     timeCalled: new Date().toLocaleTimeString(),
     timestamp: new Date().toISOString()
@@ -70,14 +79,26 @@ async function handleConversationInsight(webhookData) {
 
 function extractPatientInfo(webhookData) {
   const { name, phone, call_control_id } = webhookData;
-  // Handle both "Pain level" (from webhook) and "pain_level" (legacy)
-  const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
+  
+  // Handle new is_urgent format and legacy pain level formats
+  let status = 'Non-Urgent'; // default
+  
+  if (webhookData.is_urgent !== undefined) {
+    // New format: is_urgent boolean
+    status = webhookData.is_urgent === true ? 'Urgent' : 'Non-Urgent';
+  } else {
+    // Legacy format: pain level based
+    const pain_level = webhookData['Pain level'] || webhookData.pain_level || null;
+    status = determineEmergencyStatus(pain_level);
+  }
   
   return {
     name: name || 'Unknown',
-    phone: phone || 'Unknown',
-    pain_level: pain_level,
+    phone: phone ? phone.toString() : 'Unknown',
+    pain_level: webhookData['Pain level'] || webhookData.pain_level || null,
+    is_urgent: webhookData.is_urgent,
     call_control_id: call_control_id,
+    status: status,
     symptoms: 'Not specified',
     timeCalled: new Date().toLocaleTimeString(),
     timestamp: new Date().toISOString(),
