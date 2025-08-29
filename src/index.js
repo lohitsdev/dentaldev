@@ -11,6 +11,25 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors()); // Enable CORS for all routes
+
+// Raw body parser for emergency webhook
+app.use('/webhook/emergency', (req, res, next) => {
+  let data = '';
+  req.setEncoding('utf8');
+  
+  req.on('data', chunk => {
+    data += chunk;
+  });
+  
+  req.on('end', () => {
+    req.rawBody = data;
+    console.log(`\n📦 [RAW BODY] Length: ${data.length}`);
+    console.log(`\n📦 [RAW BODY] Content: ${data}`);
+    next();
+  });
+});
+
+// Standard JSON body parser for all routes
 app.use(bodyParser.json());
 
 // Health check endpoint (keep this first for monitoring)
@@ -684,13 +703,58 @@ app.post('/webhook/emergency', async (req, res) => {
   console.log(`\n${'='.repeat(80)}`);
   console.log(`🚨 [${requestId}] Emergency webhook received at ${startTime.toISOString()}`);
   
+  // Log the raw request as received
+  console.log(`\n🔬 [${requestId}] RAW REQUEST DUMP:`);
+  console.log(`Headers:`, req.headers);
+  console.log(`Body (typeof):`, typeof req.body);
+  console.log(`Body (JSON.stringify):`, JSON.stringify(req.body));
+  console.log(`Body (toString):`, req.body.toString ? req.body.toString() : 'No toString method');
+  console.log(`Body (inspect):`, require('util').inspect(req.body, { depth: 10, colors: false }));
+  
+  // Check if we need to modify bodyParser settings
+  if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+    console.log(`\n📝 [${requestId}] Content-Type is application/json, bodyParser should handle it`);
+  } else {
+    console.log(`\n⚠️ [${requestId}] Content-Type is not application/json: ${req.headers['content-type']}`);
+  }
+  
   try {
-    // Log raw request data
+    // Log raw request data and headers
     console.log(`\n📥 [${requestId}] Raw webhook payload:`, JSON.stringify(req.body, null, 2));
+    console.log(`\n🔍 [${requestId}] Request headers:`, JSON.stringify(req.headers, null, 2));
+    console.log(`\n🔢 [${requestId}] Request body type:`, typeof req.body);
+    console.log(`\n📏 [${requestId}] Request body is array:`, Array.isArray(req.body));
+    
+    if (Array.isArray(req.body)) {
+      console.log(`\n📊 [${requestId}] Array length:`, req.body.length);
+      if (req.body.length > 0) {
+        console.log(`\n🔎 [${requestId}] First item type:`, typeof req.body[0]);
+        console.log(`\n🔑 [${requestId}] First item keys:`, req.body[0] ? Object.keys(req.body[0]) : 'null');
+      }
+    }
     
     // Validate request structure
     if (!req.body) {
-      throw new Error('Missing request body');
+      console.log(`\n⚠️ [${requestId}] Missing request body in req.body`);
+      
+      // Check if we have raw body data
+      if (req.rawBody && req.rawBody.length > 0) {
+        console.log(`\n🔄 [${requestId}] Attempting to parse raw body: ${req.rawBody}`);
+        
+        try {
+          const rawData = JSON.parse(req.rawBody);
+          console.log(`\n✅ [${requestId}] Successfully parsed raw body`);
+          console.log(`\n📊 [${requestId}] Parsed raw data:`, JSON.stringify(rawData, null, 2));
+          
+          // Use the parsed raw data instead
+          req.body = rawData;
+        } catch (parseError) {
+          console.log(`\n❌ [${requestId}] Failed to parse raw body:`, parseError.message);
+        }
+      } else {
+        console.log(`\n❌ [${requestId}] No raw body data available either`);
+        throw new Error('Missing request body');
+      }
     }
     
     // Handle both direct payload and array of function calls
