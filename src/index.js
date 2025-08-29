@@ -743,6 +743,51 @@ app.post('/webhook/emergency', async (req, res) => {
     // Final validation check
     if (typeof payload.Emergency !== 'boolean') {
       console.log('Emergency field is not a boolean, payload:', JSON.stringify(payload, null, 2));
+      
+      // Check request headers to see if this might be a test/ping
+      const contentType = req.headers['content-type'] || '';
+      const userAgent = req.headers['user-agent'] || '';
+      
+      console.log('Request headers - Content-Type:', contentType);
+      console.log('Request headers - User-Agent:', userAgent);
+      
+      // If this looks like a ping/test request with empty payload, return a helpful response
+      if (Object.keys(payload).length === 0) {
+        console.log('Empty payload detected, treating as a test/ping request');
+        
+        // Return a 200 response with helpful information instead of an error
+        res.status(200).json({
+          message: 'Emergency webhook endpoint is active',
+          status: 'ready',
+          expected_format: {
+            direct_format: {
+              "Emergency": true,
+              "Reason": "Description of emergency",
+              "Name": "Patient name",
+              "phone": "Patient phone number"
+            },
+            function_call_format: [
+              {
+                "id": "call_id",
+                "type": "function",
+                "function": {
+                  "name": "emergencytext",
+                  "arguments": {
+                    "Emergency": true,
+                    "Name": "Patient name",
+                    "Reason": "Description of emergency",
+                    "telnyx_end_user_target": "Phone number"
+                  }
+                }
+              }
+            ]
+          },
+          timestamp: new Date().toISOString(),
+          request_id: requestId
+        });
+        return; // Stop processing
+      }
+      
       throw new Error('Invalid request: Emergency must be a boolean value (true/false)');
     }
 
