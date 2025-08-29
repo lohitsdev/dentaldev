@@ -702,8 +702,47 @@ app.post('/webhook/emergency', async (req, res) => {
       payload = req.body[0].function.arguments;
     }
     
-    // Validate against schema
+    // Validate against schema with better error handling
+    if (payload && typeof payload === 'object') {
+      // Check if this is an array of function calls (raw format)
+      if (Array.isArray(req.body) && req.body.length > 0) {
+        console.log('Processing raw array of function calls');
+        
+        // Try to find an emergencytext function
+        const emergencyFunction = req.body.find(item => 
+          item.function && item.function.name === 'emergencytext' && 
+          item.function.arguments && typeof item.function.arguments.Emergency === 'boolean'
+        );
+        
+        if (emergencyFunction) {
+          console.log('Found emergencytext function with Emergency boolean');
+          payload = emergencyFunction.function.arguments;
+        }
+        
+        // If we still don't have a valid payload, try the first function with arguments
+        if (typeof payload.Emergency !== 'boolean') {
+          const firstWithArgs = req.body.find(item => 
+            item.function && item.function.arguments && 
+            Object.keys(item.function.arguments).length > 0
+          );
+          
+          if (firstWithArgs) {
+            console.log(`Found function ${firstWithArgs.function.name} with arguments`);
+            payload = firstWithArgs.function.arguments;
+            
+            // If no Emergency field but is_urgent exists, use that
+            if (typeof payload.Emergency !== 'boolean' && typeof payload.is_urgent === 'boolean') {
+              console.log('Using is_urgent as Emergency flag');
+              payload.Emergency = payload.is_urgent;
+            }
+          }
+        }
+      }
+    }
+    
+    // Final validation check
     if (typeof payload.Emergency !== 'boolean') {
+      console.log('Emergency field is not a boolean, payload:', JSON.stringify(payload, null, 2));
       throw new Error('Invalid request: Emergency must be a boolean value (true/false)');
     }
 
