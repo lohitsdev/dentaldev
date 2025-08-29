@@ -359,7 +359,7 @@ app.post('/webhook/ai-assistant', async (req, res) => {
       }
       
       const callData = {
-        name: req.body.name || 'Unknown',
+        name: req.body.Name || req.body.name || 'Unknown',
         phone: req.body.phone ? req.body.phone.toString() : 'Unknown',
         pain_level: req.body['Pain level'] || req.body.pain_level || null,
         is_urgent: req.body.is_urgent,
@@ -692,29 +692,38 @@ app.post('/webhook/emergency', async (req, res) => {
     if (!req.body) {
       throw new Error('Missing request body');
     }
-
+    
+    // Handle both direct payload and array of function calls
+    let payload = req.body;
+    
+    // Check if we received an array of function calls
+    if (Array.isArray(req.body) && req.body.length > 0 && req.body[0].function && req.body[0].function.arguments) {
+      console.log('Detected array of function calls, extracting arguments from first function');
+      payload = req.body[0].function.arguments;
+    }
+    
     // Validate against schema
-    if (typeof req.body.Emergency !== 'boolean') {
+    if (typeof payload.Emergency !== 'boolean') {
       throw new Error('Invalid request: Emergency must be a boolean value (true/false)');
     }
 
-    const isEmergency = req.body.Emergency;
-    const reason = req.body.Reason || req.body['Reason '] || 'No reason provided'; // Handle both "Reason" and "Reason " (with space)
+    const isEmergency = payload.Emergency;
+    const reason = payload.Reason || payload['Reason '] || 'No reason provided'; // Handle both "Reason" and "Reason " (with space)
     
     // Extract patient info from webhook payload
     let patientInfo = {};
     
     // Check if we have direct Name and phone fields
-    if (req.body.Name) {
-      patientInfo.name = req.body.Name;
+    if (payload.Name) {
+      patientInfo.name = payload.Name;
     }
     
     // Handle phone number from telnyx_end_user_target or other phone fields
-    if (req.body.telnyx_end_user_target) {
+    if (payload.telnyx_end_user_target) {
       // Use phone number exactly as received from webhook
-      patientInfo.phone = req.body.telnyx_end_user_target.toString();
-    } else if (req.body.phone) {
-      patientInfo.phone = req.body.phone;
+      patientInfo.phone = payload.telnyx_end_user_target.toString();
+    } else if (payload.phone) {
+      patientInfo.phone = payload.phone;
     }
     
     // Always include the reason
@@ -729,24 +738,42 @@ app.post('/webhook/emergency', async (req, res) => {
       }
     }
     
+    // Check for call_control_id in the payload or in the second function call
+    if (payload.call_control_id) {
+      patientInfo.call_control_id = payload.call_control_id;
+    } else if (Array.isArray(req.body) && req.body.length > 1 && req.body[1].function && req.body[1].function.arguments && req.body[1].function.arguments.call_control_id) {
+      patientInfo.call_control_id = req.body[1].function.arguments.call_control_id;
+    }
+    
+    // Check for is_urgent flag in the payload or in the second function call
+    if (payload.is_urgent !== undefined) {
+      patientInfo.is_urgent = payload.is_urgent;
+    } else if (Array.isArray(req.body) && req.body.length > 1 && req.body[1].function && req.body[1].function.arguments && req.body[1].function.arguments.is_urgent !== undefined) {
+      patientInfo.is_urgent = req.body[1].function.arguments.is_urgent;
+    }
+    
     // Log validated data
     console.log(`\n📋 [${requestId}] Validated Data:`);
     console.log(`Emergency Status: ${isEmergency ? 'TRUE' : 'FALSE'}`);
     console.log(`Reason: ${reason}`);
     if (patientInfo.name) console.log(`Patient Name: ${patientInfo.name}`);
     if (patientInfo.phone) console.log(`Patient Phone: ${patientInfo.phone}`);
+    if (patientInfo.call_control_id) console.log(`Call Control ID: ${patientInfo.call_control_id}`);
+    if (patientInfo.is_urgent !== undefined) console.log(`Is Urgent: ${patientInfo.is_urgent}`);
 
     // Process through webhook event handler
     await processWebhookEvent({
       data: {
         event_type: 'emergency.status',
         payload: {
-          Emergency: req.body.Emergency,
+          Emergency: isEmergency,
           is_emergency: isEmergency,
           reason: reason,
           patientInfo: patientInfo,
           timestamp: new Date().toISOString(),
-          request_id: requestId
+          request_id: requestId,
+          call_control_id: patientInfo.call_control_id,
+          is_urgent: patientInfo.is_urgent
         }
       }
     });

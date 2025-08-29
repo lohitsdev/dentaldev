@@ -17,7 +17,8 @@ async function handleWebhook(webhookData) {
 }
 
 async function handleInitialWebhook(webhookData) {
-  const { call_control_id, name, phone } = webhookData;
+  const { call_control_id, phone } = webhookData;
+  const name = webhookData.Name || webhookData.name;
   
   if (!call_control_id) {
     console.log('No call_control_id found, skipping storage');
@@ -78,7 +79,8 @@ async function handleConversationInsight(webhookData) {
 }
 
 function extractPatientInfo(webhookData) {
-  const { name, phone, call_control_id } = webhookData;
+  const { phone, call_control_id } = webhookData;
+  const name = webhookData.Name || webhookData.name;
   
   // Handle new is_urgent format and legacy pain level formats
   let status = 'Non-Urgent'; // default
