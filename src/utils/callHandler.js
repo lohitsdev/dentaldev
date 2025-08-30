@@ -130,13 +130,13 @@ async function handleEmergencyStatus(event) {
         const displayPhone = patientPhone;
         
         // Create the SMS message in the requested format
-        const message = `EMERGENCY: ${patientName} (${displayPhone}) requesting to speak to doctor due to ${reason}.`;
+        const message = `URGENCY: ${patientName} (${displayPhone}) requesting to speak to doctor due to ${reason}.`;
         
-        console.log(`[SMS] Emergency details - Name: ${patientName}, Phone: ${patientPhone}, Reason: ${reason}`);
+        console.log(`[SMS] URGENCY details - Name: ${patientName}, Phone: ${patientPhone}, Reason: ${reason}`);
         
         await telnyxClient.sendSMS(doctorPhone, message);
-        console.log('[SMS SENT] Emergency notification sent to', doctorPhone);
-        console.log(`[EMERGENCY STATUS] ✅ Emergency SMS sent for request ${requestId}`);
+        console.log('[SMS SENT] URGENCY notification sent to', doctorPhone);
+        console.log(`[EMERGENCY STATUS] ✅ URGENCY SMS sent for request ${requestId}`);
       } else {
         console.log('[SMS ERROR] No emergency doctor phone number configured');
       }
