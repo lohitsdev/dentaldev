@@ -12,8 +12,12 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors()); // Enable CORS for all routes
 
-// Raw body parser for emergency webhook
+// Raw body parser for emergency webhook (before standard JSON parser)
 app.use('/webhook/emergency', (req, res, next) => {
+  if (req.method !== 'POST') {
+    return next();
+  }
+  
   let data = '';
   req.setEncoding('utf8');
   
@@ -25,12 +29,31 @@ app.use('/webhook/emergency', (req, res, next) => {
     req.rawBody = data;
     console.log(`\n📦 [RAW BODY] Length: ${data.length}`);
     console.log(`\n📦 [RAW BODY] Content: ${data}`);
+    
+    // Parse JSON manually for this route
+    try {
+      req.body = JSON.parse(data);
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      req.body = {};
+    }
     next();
+  });
+  
+  req.on('error', (error) => {
+    console.error('Error reading request body:', error);
+    next(error);
   });
 });
 
-// Standard JSON body parser for all routes
-app.use(bodyParser.json());
+// Standard JSON body parser for all other routes
+app.use((req, res, next) => {
+  // Skip JSON parsing for emergency webhook as it's handled above
+  if (req.path === '/webhook/emergency') {
+    return next();
+  }
+  bodyParser.json()(req, res, next);
+});
 
 // Health check endpoint (keep this first for monitoring)
 const fs = require('fs').promises;
